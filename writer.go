@@ -5,10 +5,11 @@ import (
 	"io"
 	"runtime"
 	"bytes"
+	"errors"
 )
 
 const (
-	MaxScanTokenSize = 128 * 1024
+	MaxScanTokenSize = 256 * 1024
 )
 
 func (logger *Logger) Writer() *io.PipeWriter {
@@ -44,6 +45,14 @@ func (entry *Entry) WriterLevelDynamic() *io.PipeWriter {
 }
 
 func (entry *Entry) writerScanner(reader *io.PipeReader, printFunc func(args ...interface{})) {
+	err := errors.New("Token error")
+	for err != nil {
+		err = entry._writerScanner(reader, printFunc)
+	}
+	reader.Close()
+}
+
+func (entry *Entry) _writerScanner(reader *io.PipeReader, printFunc func(args ...interface{})) error {
 	scanner := bufio.NewScanner(reader)
 	scanner.Buffer(nil, MaxScanTokenSize)
 	for scanner.Scan() {
@@ -51,11 +60,20 @@ func (entry *Entry) writerScanner(reader *io.PipeReader, printFunc func(args ...
 	}
 	if err := scanner.Err(); err != nil {
 		entry.Errorf("Error while reading from Writer: %s", err)
+		return err
+	}
+	return nil
+}
+
+func (entry *Entry) writerScannerDynamic(reader *io.PipeReader) {
+	err := errors.New("Token error")
+	for err != nil {
+		err = entry._writerScannerDynamic(reader)
 	}
 	reader.Close()
 }
 
-func (entry *Entry) writerScannerDynamic(reader *io.PipeReader) {
+func (entry *Entry) _writerScannerDynamic(reader *io.PipeReader) error {
 	scanner := bufio.NewScanner(reader)
 	scanner.Buffer(nil, MaxScanTokenSize)
 	for scanner.Scan() {
@@ -65,8 +83,9 @@ func (entry *Entry) writerScannerDynamic(reader *io.PipeReader) {
 	}
 	if err := scanner.Err(); err != nil {
 		entry.Errorf("Error while reading from Writer: %s", err)
+		return err
 	}
-	reader.Close()
+	return nil
 }
 
 func writerFinalizer(writer *io.PipeWriter) {
