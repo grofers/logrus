@@ -7,6 +7,10 @@ import (
 	"bytes"
 )
 
+const (
+	MaxScanTokenSize = 128 * 1024
+)
+
 func (logger *Logger) Writer() *io.PipeWriter {
 	return NewEntry(logger).WriterLevelDynamic()
 }
@@ -41,6 +45,7 @@ func (entry *Entry) WriterLevelDynamic() *io.PipeWriter {
 
 func (entry *Entry) writerScanner(reader *io.PipeReader, printFunc func(args ...interface{})) {
 	scanner := bufio.NewScanner(reader)
+	scanner.Buffer(nil, MaxScanTokenSize)
 	for scanner.Scan() {
 		printFunc(scanner.Text())
 	}
@@ -52,6 +57,7 @@ func (entry *Entry) writerScanner(reader *io.PipeReader, printFunc func(args ...
 
 func (entry *Entry) writerScannerDynamic(reader *io.PipeReader) {
 	scanner := bufio.NewScanner(reader)
+	scanner.Buffer(nil, MaxScanTokenSize)
 	for scanner.Scan() {
 		txt := scanner.Text()
 		printFunc := entry.get_level_function(get_level(txt))
